@@ -1,25 +1,69 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Course-Project-1"
+output: html_document
 ---
 
+The following initializes the necessary libraries for this code and reads the 
+activity csv. 
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(knitr)
+activity <- read.csv("activity.csv")
 
-## Loading and preprocessing the data
+```
 
+## What is the mean and median total number of steps taken per day?
+```{r}
+sum_qd <- aggregate(steps ~ date, activity, sum)
+hist(sum_qd$steps, xlab = "Number of Steps", main = "Total Number of Steps Per Day")
+sq_mean <- mean(sum_qd$steps)
+sq_median <- median(sum_qd$steps)
+```
 
-
-## What is mean total number of steps taken per day?
-
-
+The mean number of steps per day is `r sq_mean` and the median number is `r sq_median`
 
 ## What is the average daily activity pattern?
+```{r}
+mean_qint <- aggregate(steps ~ interval, activity, mean)
+plot(mean_qint, type = "l", xlab = "Interval", ylab = "Steps", main = "Average Steps per Interval")
+max <- max(mean_qint$steps)
+max_step_int <- filter(mean_qint, steps == max)
+```
 
+The interval with the highest average number of steps is `r max_step_int$interval`
 
+## Inputing missing values
+```{r}
+total_na <- sum(is.na(activity$steps))
+```
 
-## Imputing missing values
+The number of missing values is `r total_na`. 
 
+Missing values were replaced with average number of steps per interval
+```{r}
+activity$steps <- as.numeric(activity$steps)
+activity1 <- mutate(activity, steps = if_else(is.na(steps), 
+                                             mean(mean_qint$steps), steps))
 
+sum_qd1 <- aggregate(steps ~ date, activity1, sum)
+hist(sum_qd1$steps, xlab = "Number of Steps", main = "Total Number of Steps Per Day")
+sq_mean1 <- mean(sum_qd1$steps)
+sq_median1 <- median(sum_qd1$steps)
+```
+
+The mean number of steps per day is `r sq_mean1` and the median number is `r sq_median1`
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+activity1$date <- strptime(activity1$date, format = "%Y-%m-%d")
+activity2 <- mutate(activity1, weekday = if_else(weekdays(date) == "Saturday" | weekdays(date) == "Sunday", "weekend", "weekday"))
+wkday_data <- aggregate(steps ~ interval + weekday, activity2, mean)
+par(mfrow = c(2,1))
+with(filter(wkday_data, weekday == "weekday"), 
+     plot(interval, steps, type = "l", main = "Weekday"))
+with(filter(wkday_data, weekday == "weekend"), 
+     plot(interval, steps, type = "l", main = "Weekend", xlab = "Interval", 
+          ylab = "Number of Steps"))
+
+```
